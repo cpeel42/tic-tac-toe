@@ -1,63 +1,106 @@
 const GameBoard = (function() {
     const create = function() {
-        let spaces = ['', '', '', '', '', '', '', '', ''];
-        const checkForWin = function() {
-            let isMatch = false;
-            function rowOrDiagIsMatch (a,b,c) {
-                if (a === b && a === c && a != false) {
-                    isMatch = true;
-                };
-            };
-            rowOrDiagIsMatch(spaces[0], spaces[1], spaces[2]);
-            rowOrDiagIsMatch(spaces[3], spaces[4], spaces[5]);
-            rowOrDiagIsMatch(spaces[6], spaces[7], spaces[8]);
-            rowOrDiagIsMatch(spaces[0], spaces[3], spaces[6]);
-            rowOrDiagIsMatch(spaces[1], spaces[4], spaces[7]);
-            rowOrDiagIsMatch(spaces[2], spaces[5], spaces[8]);
-            rowOrDiagIsMatch(spaces[0], spaces[4], spaces[8]);
-            rowOrDiagIsMatch(spaces[2], spaces[4], spaces[6]);
-            return isMatch;
-        };
-        return {spaces, checkForWin};
+        let spaces = Array(9).fill('');
+        return {spaces};
     };
     return {create};
 })();
 
 const Player = (function() {
-    const create = function(playerName, flip) {
+    const create = function(playerName, isX) {
         const name = playerName;
-        const symbol = flip ? 'x' : 'o';
+        const symbol = isX ? 'x' : 'o';
         return {name, symbol};
     };
     return {create};
 })();
 
+const Display = (function() {
+    const create = function() {
+        // const playerNames = [...document.querySelectorAll('player-name')]
+        const spaces = [...document.querySelectorAll(".space")]
+        for (let i = 0; i < spaces.length; i++) {
+            let space = spaces[i]
+            space.addEventListener('click', () => {
+                const id = space.dataset.spaceNum;
+                playGame.makeMove(id);
+            })
+        };
+        const resetButton = document.querySelector('.reset-button');
+        resetButton.addEventListener('click', () => {
+            playGame.resetGame();
+        });
+        return {spaces}
+    }
+    return {create}
+})();
+
 const playGame = (function() {
-    const flip = Math.floor(Math.random()*2)
-    const players = [Player.create('Chris', flip), Player.create('Erika', !flip)]
-    const gameBoard = GameBoard.create()
-    const makeMove = function() {
-        let currentPlayer = players[flip ^ (i % 2)]; //returns whose turn it is on the given round based on the initial flip
-        let isValidMove = false;
-        while (!isValidMove) {
-            let choice = prompt("Enter the board index number to make a move");
-            if (gameBoard.spaces[choice] == '') {
-                gameBoard.spaces[choice] = currentPlayer.symbol;
-                isValidMove = true;
-            } else {
-                console.log('Choose another space')
+    let display = Display.create()
+    const flip = Math.floor(Math.random()*2);
+    const players = [Player.create('Chris', flip), Player.create('Erika', !flip)];
+    let gameBoard = GameBoard.create();
+    let gameOver = false
+    let round = 0;
+    let result;
+
+    const makeMove = function(choice) {
+        let currentPlayer = players[flip ^ (round % 2)]; //returns whose turn it is on the given round based on the initial flip
+        if (gameOver) {
+            console.log('The game is already over.');
+            return;
+        }
+        if (gameBoard.spaces[choice] != '') {
+            console.log('This space is already taken.')
+            return;
+        }
+        gameBoard.spaces[choice] = currentPlayer.symbol;
+        display.spaces[choice].textContent = currentPlayer.symbol;
+        if (gameIsTied() || gameIsWon()) {
+            console.log(result);
+            gameOver = true;
+        }
+        round++;
+    };
+
+    const gameIsTied = function() {
+        if (round >= 8 && !gameIsWon()) {
+            result = 'Tie';
+            return true;
+        }
+        return false;
+    };
+
+    const gameIsWon = function() {
+        const spaces = gameBoard.spaces;
+        const winConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6] // Diagonals
+        ];
+
+        for (const [a, b, c] of winConditions) {
+            if (spaces[a] && spaces[a] === spaces[b] && spaces[a] === spaces[c]) {
+                result = `${spaces[a]} Wins`;
+                return true;
             }
         }
+        return false;
+    }
+    const resetGame = function() {
+        gameBoard = GameBoard.create(); // Reset the game board
+        gameOver = false; // Reset the game over state
+        round = 0; // Reset the round counter
+        result = null; // Reset the result
+
+        // Clear the display
+        display.spaces.forEach(space => {
+            space.textContent = '';
+        });
+        console.log('Game has been reset.');
     };
-    const init = (function() {
-        let gameOver = false;
-        console.log(players[0], players[1])
-        for (i=1; i<=9 && !gameOver; i++) {
-            makeMove();
-            gameOver = gameBoard.checkForWin();
-            console.log(`round ${i}: ${gameBoard.spaces}`);
-        };
-    })();
+
+    return {makeMove, resetGame};
 })();
 
 

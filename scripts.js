@@ -1,106 +1,143 @@
-const GameBoard = (function() {
-    const create = function() {
-        let spaces = Array(9).fill('');
-        return {spaces};
-    };
-    return {create};
-})();
+const playerModule = (function() {
 
-const Player = (function() {
-    const create = function(playerName, isX) {
+    function create(playerName, isX) {
         const name = playerName;
         const symbol = isX ? 'x' : 'o';
         return {name, symbol};
     };
+
     return {create};
+
 })();
 
-const Display = (function() {
-    const create = function() {
-        // const playerNames = [...document.querySelectorAll('player-name')]
+const displayModule = (function() {
+
+    function create() {
+        const info = document.querySelector('.info');
         const spaces = [...document.querySelectorAll(".space")]
+        const resetButton = document.querySelector('.reset-button');
+
         for (let i = 0; i < spaces.length; i++) {
             let space = spaces[i]
             space.addEventListener('click', () => {
                 const id = space.dataset.spaceNum;
-                playGame.makeMove(id);
+                gameModule.makeMove(id);
             })
         };
-        const resetButton = document.querySelector('.reset-button');
+
         resetButton.addEventListener('click', () => {
-            playGame.resetGame();
+            gameModule.reset(updatePlayers());
         });
-        return {spaces}
+
+        function updatePlayers() {
+            const playerOne = document.querySelector('.player-one').value;
+            const playerTwo = document.querySelector('.player-two').value;
+            return { playerOne, playerTwo };
+        };
+
+        function updateInfo(information) {
+            info.textContent = information;
+        }
+
+        function updateSpace(spaceObjects) {
+            spaceObjects.forEach(space => {
+                const element = document.querySelector(`[data-space-num="${space.id}"]`);
+                element.textContent = space.content;
+            });
+        }
+
+        return {updateInfo, updateSpace, updatePlayers}
     }
     return {create}
 })();
 
-const playGame = (function() {
-    let display = Display.create()
-    const flip = Math.floor(Math.random()*2);
-    const players = [Player.create('Chris', flip), Player.create('Erika', !flip)];
-    let gameBoard = GameBoard.create();
-    let gameOver = false
-    let round = 0;
-    let result;
+const gameModule = (function() {
 
-    const makeMove = function(choice) {
-        let currentPlayer = players[flip ^ (round % 2)]; //returns whose turn it is on the given round based on the initial flip
-        if (gameOver) {
-            console.log('The game is already over.');
-            return;
-        }
-        if (gameBoard.spaces[choice] != '') {
-            console.log('This space is already taken.')
-            return;
-        }
-        gameBoard.spaces[choice] = currentPlayer.symbol;
-        display.spaces[choice].textContent = currentPlayer.symbol;
-        if (gameIsTied() || gameIsWon()) {
-            console.log(result);
-            gameOver = true;
-        }
-        round++;
+    const gameState = {
+        flip: 0,
+        round: 0,
+        gameOver: false,
+        players: [],
     };
 
-    const gameIsTied = function() {
-        if (round >= 8 && !gameIsWon()) {
-            result = 'Tie';
-            return true;
+    let display = displayModule.create();
+    reset({ playerOne: 'Player 1', playerTwo: 'Player 2' });
+
+    function reset(players) {
+        gameState.flip = Math.floor(Math.random() * 2);
+        gameState.round = 0;
+        gameState.gameOver = false;
+        gameState.players = [
+            playerModule.create(players.playerOne, gameState.flip), 
+            playerModule.create(players.playerTwo, !gameState.flip)
+        ];
+        console.log(players);
+        spaces = Array.from({ length: 9 }, (_, index) => ({ id: index, content: '' }));
+
+        display.updateInfo('Welcome. Enter player names below, then press Start.')
+        display.updateSpace(spaces);
+    }
+
+    function makeMove(choice) {
+
+        if (gameState.gameOver) {
+            display.updateInfo("The game is already over! No more moves allowed.");
+            return;
         }
-        return false;
+
+        let currentPlayer = gameState.players[gameState.flip ^ (gameState.round % 2)]; //returns whose turn it is on the given round based on the initial flip
+
+        if (isSpaceTaken(choice)) {
+            display.updateInfo("That space is already taken. Try another spot.");
+            return; 
+        }
+
+        spaces[choice].content = currentPlayer.symbol;
+        display.updateSpace(spaces);
+
+
+        if (isGameWon()) {
+            handleGameOver(`${currentPlayer.name} has won!`);
+            return;
+        }
+
+        if (isGameTied()) {
+            handleGameOver(`It's a tie!`);
+            return;
+        }
+    
+        display.updateInfo("Next player's turn.");
+        gameState.round++;
     };
 
-    const gameIsWon = function() {
-        const spaces = gameBoard.spaces;
+    function handleGameOver(result) {
+        gameState.gameOver = true;
+        display.updateInfo(result);
+    }
+
+    function isSpaceTaken(choice) {
+        return spaces[choice].content !== '';
+    }
+
+    function isGameTied() {
+        return (gameState.round >= 8 && !isGameWon()) ? true : false;
+    };
+
+    function isGameWon() {
         const winConditions = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-            [0, 4, 8], [2, 4, 6] // Diagonals
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], 
+            [0, 4, 8], [2, 4, 6] 
         ];
 
         for (const [a, b, c] of winConditions) {
-            if (spaces[a] && spaces[a] === spaces[b] && spaces[a] === spaces[c]) {
-                result = `${spaces[a]} Wins`;
+            if (spaces[a].content && 
+                spaces[a].content === spaces[b].content && 
+                spaces[a].content === spaces[c].content) {
                 return true;
             }
         }
         return false;
     }
-    const resetGame = function() {
-        gameBoard = GameBoard.create(); // Reset the game board
-        gameOver = false; // Reset the game over state
-        round = 0; // Reset the round counter
-        result = null; // Reset the result
-
-        // Clear the display
-        display.spaces.forEach(space => {
-            space.textContent = '';
-        });
-        console.log('Game has been reset.');
-    };
-
-    return {makeMove, resetGame};
+    return {makeMove, reset};
 })();
-
-

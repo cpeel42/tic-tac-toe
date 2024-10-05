@@ -58,24 +58,23 @@ const gameModule = (function() {
         round: 0,
         gameOver: false,
         players: [],
+        spaces: [],
     };
 
     let display = displayModule.create();
     reset({ playerOne: 'Player 1', playerTwo: 'Player 2' });
 
-    function reset(players) {
+    function reset({playerOne, playerTwo}) {
         gameState.flip = Math.floor(Math.random() * 2);
         gameState.round = 0;
         gameState.gameOver = false;
         gameState.players = [
-            playerModule.create(players.playerOne, gameState.flip), 
-            playerModule.create(players.playerTwo, !gameState.flip)
+            playerModule.create(playerOne, gameState.flip), 
+            playerModule.create(playerTwo, !gameState.flip)
         ];
-        console.log(players);
-        spaces = Array.from({ length: 9 }, (_, index) => ({ id: index, content: '' }));
-
+        gameState.spaces = Array.from({ length: 9 }, (_, index) => ({ id: index, content: '' }));
         display.updateInfo('Welcome. Enter player names below, then press Start.')
-        display.updateSpace(spaces);
+        display.updateSpace(gameState.spaces);
     }
 
     function makeMove(choice) {
@@ -85,15 +84,14 @@ const gameModule = (function() {
             return;
         }
 
-        let currentPlayer = gameState.players[gameState.flip ^ (gameState.round % 2)]; //returns whose turn it is on the given round based on the initial flip
-
+        let currentPlayer = gameState.players[gameState.round % 2];
         if (isSpaceTaken(choice)) {
             display.updateInfo("That space is already taken. Try another spot.");
             return; 
         }
 
-        spaces[choice].content = currentPlayer.symbol;
-        display.updateSpace(spaces);
+        gameState.spaces[choice].content = currentPlayer.symbol;
+        display.updateSpace(gameState.spaces);
 
 
         if (isGameWon()) {
@@ -116,7 +114,7 @@ const gameModule = (function() {
     }
 
     function isSpaceTaken(choice) {
-        return spaces[choice].content !== '';
+        return gameState.spaces[choice].content !== '';
     }
 
     function isGameTied() {
@@ -131,9 +129,9 @@ const gameModule = (function() {
         ];
 
         for (const [a, b, c] of winConditions) {
-            if (spaces[a].content && 
-                spaces[a].content === spaces[b].content && 
-                spaces[a].content === spaces[c].content) {
+            if (gameState.spaces[a].content && 
+                gameState.spaces[a].content === gameState.spaces[b].content && 
+                gameState.spaces[a].content === gameState.spaces[c].content) {
                 return true;
             }
         }
